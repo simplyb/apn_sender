@@ -14,14 +14,6 @@ module APN
   class QueueManager
     extend Resque
 
-    def self.before_unregister_worker(&block)
-      block ? (@before_unregister_worker = block) : @before_unregister_worker
-    end
-
-    def self.before_unregister_worker=(before_unregister_worker)
-      @before_unregister_worker = before_unregister_worker
-    end
-
     def self.to_s
       "APN::QueueManager (Resque Client) connected to #{redis.server}"
     end
@@ -29,8 +21,21 @@ module APN
   
 end
 
+module Resque
+  extend self
+  
+  def before_unregister_worker(&block)
+    block ? (@before_unregister_worker = block) : @before_unregister_worker
+  end
+
+  def before_unregister_worker=(before_unregister_worker)
+    @before_unregister_worker = before_unregister_worker
+  end
+  
+end
+
 # Ensures we close any open sockets when the worker exits
-APN::QueueManager.before_unregister_worker do |worker|
+Resque.before_unregister_worker do |worker|
   worker.send(:teardown_connection) if worker.respond_to?(:teardown_connection)
 end
 

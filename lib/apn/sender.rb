@@ -1,4 +1,4 @@
-module APN
+module Resque
   # Subclass of Resque::Worker which initializes a single TCP socket on creation to communicate with Apple's Push Notification servers.
   # Shares this socket with each child process forked off by Resque to complete a job. Socket is closed in the before_unregister_worker
   # callback, which gets called on normal or exceptional exits.
@@ -14,7 +14,7 @@ module APN
   # Use the <code>:cert_pass</code> option if your certificates require a password
   #
   # If a socket error is encountered, will teardown the connection and retry again twice before admitting defeat.
-  class Sender < ::Resque::Worker
+  class Worker
     include APN::Connection::Base
     TIMES_TO_RETRY_SOCKET_ERROR = 2
                                 
@@ -26,7 +26,7 @@ module APN
       
       self.socket.write( notification.to_s )
     rescue SocketError => error
-      log(:error, "Error with connection to #{apn_host} (attempt #{attempt}): #{error}")
+      log_it(:error, "Error with connection to #{apn_host} (attempt #{attempt}): #{error}")
       
       # Try reestablishing the connection
       teardown_connection
@@ -45,5 +45,6 @@ module APN
     end
 
   end
+
 
 end

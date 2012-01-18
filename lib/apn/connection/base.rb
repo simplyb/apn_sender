@@ -9,16 +9,6 @@ module APN
     module Base
       attr_accessor :opts, :logger
       
-      def initialize(opts = {})
-        @opts = opts
-
-        setup_logger
-        log(:info, "APN::Sender initializing. Establishing connections first...") if @opts[:verbose]
-        setup_paths
-
-        super( APN::QUEUE_NAME ) if self.class.ancestors.include?(Resque::Worker)
-      end
-      
       # Lazy-connect the socket once we try to access it in some way
       def socket
         setup_connection unless @socket
@@ -27,14 +17,15 @@ module APN
             
       protected
       
-      # Default to Rails or Merg logger, if available
+      # Default to Rails or Merb logger, if available
       def setup_logger
-        @logger = if defined?(Merb::Logger)
-          Merb.logger
-        elsif defined?(::Rails.logger)
-          ::Rails.logger
-        end
-        @logger ||= Logger.new(STDOUT)
+        # @logger = if defined?(Merb::Logger)
+        #           Merb.logger
+        #         elsif defined?(::Rails.logger)
+        #           ::Rails.logger
+        #         end
+        @logger = Logger.new(STDOUT)
+        self.logger = @logger
       end
       
       # Log message to any logger provided by the user (e.g. the Rails logger).
@@ -44,8 +35,8 @@ module APN
       #
       # Perhaps a method definition of +message, +level+ would make more sense, but
       # that's also the complete opposite of what anyone comming from rails would expect.
-      alias_method(:resque_log, :log) if defined?(log)
-      def log(level, message = nil)
+      #alias_method(:resque_log, :log) if defined?(log)
+      def log_it(level, message = nil)
         level, message = 'info', level if message.nil? # Handle only one argument if called from Resque, which expects only message
 
         resque_log(message) if defined?(resque_log)
@@ -56,7 +47,7 @@ module APN
       # Log the message first, to ensure it reports what went wrong if in daemon mode. 
       # Then die, because something went horribly wrong.
       def log_and_die(msg)
-        log(:fatal, msg)
+        log_it(:fatal, msg)
         raise msg
       end
       
@@ -66,17 +57,23 @@ module APN
       
       # Get a fix on the .pem certificate we'll be using for SSL
       def setup_paths
-        @opts[:environment] ||= ::Rails.env if defined?(::Rails.env)
+        #@opts[:environment] ||= ::Rails.env if defined?(::Rails.env)
 
         # Accept a complete :full_cert_path allowing arbitrary certificate names, or create a default from the Rails env
-        cert_path = @opts[:full_cert_path] || begin
-          # Note that RAILS_ROOT is still here not from Rails, but to handle passing in root from sender_daemon
-          @opts[:root_path] ||= defined?(::Rails.root) ? ::Rails.root.to_s : (defined?(RAILS_ROOT) ? RAILS_ROOT : '/')
-          @opts[:cert_path] ||= File.join(File.expand_path(@opts[:root_path]), "config", "certs")
-          @opts[:cert_name] ||= apn_production? ? "apn_production.pem" : "apn_development.pem"
-
-          File.join(@opts[:cert_path], @opts[:cert_name])
-        end
+        # cert_path = @opts[:full_cert_path] || begin
+        #           # Note that RAILS_ROOT is still here not from Rails, but to handle passing in root from sender_daemon
+        #           @opts[:root_path] ||= defined?(::Rails.root) ? ::Rails.root.to_s : (defined?(RAILS_ROOT) ? RAILS_ROOT : '/')
+        #           @opts[:cert_path] ||= File.join(File.expand_path(@opts[:root_path]), "config", "certs")
+        #           @opts[:cert_name] ||= apn_production? ? "apn_production.pem" : "apn_development.pem"
+        #           log!("root_path: #{@opts[:root_path]}")
+        #           log!("cert_path: #{@opts[:cert_path]}")
+        #           log!("cert_name: #{@opts[:cert_name]}")
+        #           File.join(@opts[:cert_path], @opts[:cert_name])
+        #         end
+        
+        cert_path  = File.join(File.expand_path(::Rails.root.to_s), "config", "certs", "apn_development.pem")
+        
+        log!("cert_path: #{cert_path}")
         
         @apn_cert = File.read(cert_path) if File.exists?(cert_path)
         log_and_die("Please specify correct :full_cert_path. No apple push notification certificate found in: #{cert_path}") unless @apn_cert
@@ -84,8 +81,13 @@ module APN
       
       # Open socket to Apple's servers
       def setup_connection
+        #self.setup_logger
+        @opts = {:cert_pass => ""}
+        log!("APN::Sender initializing. Establishing connections first...")
+        self.setup_paths
         log_and_die("Missing apple push notification certificate") unless @apn_cert
         return true if @socket && @socket_tcp
+        log!("gets passed here")
         log_and_die("Trying to open half-open connection") if @socket || @socket_tcp
 
         ctx = OpenSSL::SSL::SSLContext.new
@@ -107,18 +109,18 @@ module APN
 
       # Close open sockets
       def teardown_connection
-        log(:info, "Closing connections...") if @opts[:verbose]
+        log_it(:info, "Closing connections...") if @opts[:verbose]
 
         begin
           @socket.close if @socket
         rescue Exception => e
-          log(:error, "Error closing SSL Socket: #{e}")
+          log_it(:error, "Error closing SSL Socket: #{e}")
         end
 
         begin
           @socket_tcp.close if @socket_tcp
         rescue Exception => e
-          log(:error, "Error closing TCP Socket: #{e}")
+          log_it(:error, "Error closing TCP Socket: #{e}")
         end
       end
       

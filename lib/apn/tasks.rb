@@ -5,7 +5,8 @@ namespace :apn do
   task :workers => :senders
 
   desc "Start an APN worker"
-  task :sender => :setup do
+  task :sender => [ :preload, :setup ] do
+    require 'resque'
     require 'apn'
 
     worker = APN::Sender.new(:full_cert_path => ENV['FULL_CERT_PATH'], :cert_path => ENV['CERT_PATH'], :environment => ENV['ENVIRONMENT'], :cert_pass => ENV['CERT_PASS'])
@@ -28,5 +29,17 @@ namespace :apn do
     end
 
     threads.each { |thread| thread.join }
+  end
+  
+  # Preload app files if this is Rails
+  task :preload => :setup do
+    if defined?(Rails) && Rails.respond_to?(:application)
+      # Rails 3
+      Rails.application.eager_load!
+    elsif defined?(Rails::Initializer)
+      # Rails 2.3
+      $rails_rake_task = false
+      Rails::Initializer.run :load_application_classes
+    end
   end
 end
