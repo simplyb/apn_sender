@@ -19,13 +19,13 @@ module APN
       
       # Default to Rails or Merb logger, if available
       def setup_logger
-        # @logger = if defined?(Merb::Logger)
-        #           Merb.logger
-        #         elsif defined?(::Rails.logger)
-        #           ::Rails.logger
-        #         end
-        @logger = Logger.new(STDOUT)
-        self.logger = @logger
+        @logger = if defined?(Merb::Logger)
+                  Merb.logger
+                elsif defined?(::Rails.logger)
+                  ::Rails.logger
+                else
+                  Logger.new(STDOUT)
+                end
       end
       
       # Log message to any logger provided by the user (e.g. the Rails logger).
