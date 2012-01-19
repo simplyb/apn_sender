@@ -14,7 +14,7 @@ module Resque
   # Use the <code>:cert_pass</code> option if your certificates require a password
   #
   # If a socket error is encountered, will teardown the connection and retry again twice before admitting defeat.
-  class Worker
+  class HardWorker < ::Resque::Worker
     include APN::Connection::Base
     TIMES_TO_RETRY_SOCKET_ERROR = 2
                                 
@@ -33,6 +33,13 @@ module Resque
       setup_connection
       send_to_apple(notification, attempt + 1)
     end
+
+   def initialize(options)
+     @opts = options
+     puts("Resque::Worker::initialize - opts: #{@opts.inspect}")
+     @queues = @opts[:queues].map { |queue| queue.to_s.strip }
+     validate_queues
+   end
     
     protected
     
