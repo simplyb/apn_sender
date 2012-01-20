@@ -19,6 +19,6 @@ module APN
     # Only execute this job in specialized APN::Sender workers, since
     # standard Resque workers don't maintain the persistent TCP connection.
     extend Resque::Plugins::AccessWorkerFromJob
-    self.required_worker_class = 'Resque::Worker'
+    self.required_worker_class = 'Resque::HardWorker'
   end
 end
