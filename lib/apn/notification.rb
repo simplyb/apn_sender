@@ -28,7 +28,7 @@ module APN
       @options = hash_as_symbols(opts.is_a?(Hash) ? opts : {:alert => opts})
       @token = token
 
-      raise "The maximum size allowed for a notification payload is 256 bytes." if packaged_notification.size.to_i > 256
+      raise "Your notification is: #{packaged_notification.size.to_i} bytes. The maximum size allowed for a notification payload is 256 bytes." if packaged_notification.size.to_i > 256
     end
 
     def to_s

@@ -52,6 +52,7 @@ module APN
       end
       
       def apn_production?
+        log!("environment: #{@opts[:environment]}")
         @opts[:environment] && @opts[:environment] != '' && :production == @opts[:environment].to_sym
       end
       
@@ -70,10 +71,11 @@ module APN
         #           log!("cert_name: #{@opts[:cert_name]}")
         #           File.join(@opts[:cert_path], @opts[:cert_name])
         #         end
-        
-        cert_path  = File.join(File.expand_path(::Rails.root.to_s), "config", "certs", "apn_development.pem")
+        pem_file = apn_production? ? "apn_production.pem" : "apn_development.pem"
+        cert_path  = File.join(File.expand_path(::Rails.root.to_s), "config", "certs", pem_file)
         
         log!("cert_path: #{cert_path}")
+        log!("apn_host: #{self.apn_host}")
         
         @apn_cert = File.read(cert_path) if File.exists?(cert_path)
         log_and_die("Please specify correct :full_cert_path. No apple push notification certificate found in: #{cert_path}") unless @apn_cert
@@ -82,7 +84,7 @@ module APN
       # Open socket to Apple's servers
       def setup_connection
         #self.setup_logger
-        @opts = {:cert_pass => ""}
+        @opts[:cert_pass] = ""
         log!("APN::Sender initializing. Establishing connections first...")
         self.setup_paths
         log_and_die("Missing apple push notification certificate") unless @apn_cert
