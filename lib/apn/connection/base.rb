@@ -52,8 +52,7 @@ module APN
       end
       
       def apn_production?
-        log!("environment: #{@opts[:environment]}")
-        @opts[:environment] && @opts[:environment] != '' && :production == @opts[:environment].to_sym
+        ::Rails.env.production?
       end
       
       # Get a fix on the .pem certificate we'll be using for SSL
